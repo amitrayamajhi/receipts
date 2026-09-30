@@ -3,8 +3,8 @@
 import { CATEGORIES } from "../rules.js";
 import { categorize, overrideKey } from "../categorize.js";
 import { saveReceipt, updateReceipt, getOverrides, rememberOverride } from "../db.js";
-import { navigate, takePending, toast, getCurrency } from "../store.js";
-import { round2, fmtNum } from "../format.js";
+import { navigate, takePending, toast, getCurrency, getMonth, setMonth } from "../store.js";
+import { round2, fmtNum, monthOf, monthLabel } from "../format.js";
 
 let R = null;          // working copy of the receipt being reviewed
 let editingId = null;  // set when editing an existing saved receipt
@@ -217,9 +217,16 @@ async function onSave(view) {
   delete rec.flags; delete rec._meta;
 
   try {
-    if (editingId) { rec.id = editingId; await updateReceipt(rec); toast("Receipt updated.", "ok"); }
-    else { await saveReceipt(rec); toast("Receipt saved.", "ok"); }
-    R = null; editingId = null;
+    if (editingId) { rec.id = editingId; await updateReceipt(rec); }
+    else { await saveReceipt(rec); }
+    R = null;
+    // Show the month the receipt was filed under, otherwise a receipt from
+    // an earlier month seems to vanish after saving.
+    const savedMonth = monthOf(rec.date);
+    const where = savedMonth !== getMonth() ? ` under ${monthLabel(savedMonth)}` : "";
+    toast(`Receipt ${editingId ? "updated" : "saved"}${where}.`, "ok");
+    editingId = null;
+    if (savedMonth) setMonth(savedMonth);
     navigate("log");
   } catch (e) {
     console.error(e);

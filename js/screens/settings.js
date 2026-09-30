@@ -16,7 +16,7 @@ export async function renderSettings(view) {
       <h3>Preferences</h3>
       <div class="row">
         <label class="field">Currency
-          <input id="currency" value="${settings.currency}" maxlength="6" />
+          <input id="currency" value="${String(settings.currency).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}" maxlength="6" />
         </label>
         <label class="field">Loyalty point value
           <input id="loyaltyRate" inputmode="decimal" value="${settings.loyaltyRate}" />

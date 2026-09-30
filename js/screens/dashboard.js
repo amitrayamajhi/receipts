@@ -52,7 +52,7 @@ export async function renderDashboard(view) {
 
     <div class="card">
       <h3>Spending by category</h3>
-      ${donutData.length ? `<div style="display:flex;justify-content:center">${donut(donutData)}</div>`
+      ${donutData.length ? `<div style="display:flex;flex-direction:column;align-items:center;gap:12px">${donut(donutData)}</div>`
         : `<p class="muted">No spending recorded this month yet.</p>`}
     </div>
 
