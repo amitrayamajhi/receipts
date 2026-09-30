@@ -11,8 +11,7 @@ no account, no server, no cloud. Built with the UAE in mind (AED, 5% VAT,
 Lulu / Carrefour / ADNOC / DEWA, Happiness Points), but the currency is
 configurable.
 
-<!-- Replace with your GitHub Pages link once enabled (see "Put it online" below) -->
-**Try it:** _coming soon_
+**Try it:** **https://amitrayamajhi.github.io/receipts/** (open it on your phone and add it to your home screen)
 
 | Scan | Review | Dashboard | Budgets |
 | :---: | :---: | :---: | :---: |
@@ -42,9 +41,9 @@ configurable.
 
 ## Use it
 
-### On your phone (once it's online)
+### On your phone
 
-Open the link, then:
+Open **https://amitrayamajhi.github.io/receipts/**, then:
 - **iPhone (Safari):** Share → **Add to Home Screen**
 - **Android (Chrome):** ⋮ menu → **Install app**
 
@@ -67,17 +66,13 @@ uploaded anywhere. That also means **clearing your browser data deletes your
 receipts**, so use **Settings → Export .csv** now and then as a backup. You
 can import it again on any device.
 
-## Put it online (free, with GitHub Pages)
+## Hosting
 
-1. On GitHub, go to this repo's **Settings → Pages**.
-2. Under **Build and deployment**, choose **Deploy from a branch**, branch
-   **`main`**, folder **`/ (root)`**, and click **Save**.
-3. After a minute or two it's live at
-   **https://amitrayamajhi.github.io/receipts/**. Put that link in the
-   **Try it** line above and in the repo's *About* box.
-
-Each person who opens the link keeps their own data on their own device.
-Hosting only serves the app's files.
+The app is hosted free on GitHub Pages straight from the `main` branch
+(**Settings → Pages → Deploy from a branch → `main` / root**), so every push
+to `main` updates the live site within a minute or two. Each person who opens
+the link keeps their own data on their own device. Hosting only serves the
+app's files.
 
 ## How it works
 
