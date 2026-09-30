@@ -5,6 +5,7 @@ import { CATEGORIES } from "../rules.js";
 import { donut, budgetBars } from "../charts.js";
 import { getMonth, getCurrency, toast } from "../store.js";
 import { fmtMoney, fmtNum, fmtPct, monthLabel, round2 } from "../format.js";
+import { spendingItems } from "../spending.js";
 
 export async function renderDashboard(view) {
   const ym = getMonth();
@@ -19,8 +20,7 @@ export async function renderDashboard(view) {
   for (const r of receipts) {
     totalVat += Number(r.vatAmount) || 0;
     totalPoints += Number(r.loyaltyPoints) || 0;
-    const items = (r.items && r.items.length) ? r.items : [{ amount: r.total || 0, category: "Other" }];
-    for (const it of items) {
+    for (const it of spendingItems(r)) {
       const a = Number(it.amount) || 0;
       byCat[it.category || "Other"] = (byCat[it.category || "Other"] || 0) + a;
       totalSpending += a;

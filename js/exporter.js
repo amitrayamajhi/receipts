@@ -1,23 +1,25 @@
 // Export / import. Uses the vendored SheetJS (global `XLSX`) for .xlsx.
 // Column order (per spec):
 //   Date, Merchant, Category, Item/Description, Amount (AED), VAT (AED),
-//   Payment Method, Receipt #, Loyalty Points, Notes
+//   Payment Method, Receipt #, Loyalty Points, Notes, Receipt Total (AED)
 import { round2, currentMonth, monthLabel } from "./format.js";
 import { CATEGORIES } from "./rules.js";
+import { spendingItems } from "./spending.js";
 
 const HEADERS = [
   "Date", "Merchant", "Category", "Item/Description", "Amount (AED)",
   "VAT (AED)", "Payment Method", "Receipt #", "Loyalty Points", "Notes",
+  "Receipt Total (AED)",
 ];
 
 // Flatten receipts -> one row per line item. VAT and Loyalty go on the first
-// row of each receipt only, so column sums don't double-count.
-function toRows(receipts) {
+// row of each receipt only, so column sums don't double-count. VAT or charges
+// not listed as items get their own row (see spending.js), so the Amount
+// column adds up to what was actually paid.
+export function toRows(receipts) {
   const rows = [];
   for (const r of receipts) {
-    const items = (r.items && r.items.length) ? r.items
-      : [{ description: "(no items)", amount: r.total || 0, category: "Other" }];
-    items.forEach((it, i) => {
+    spendingItems(r).forEach((it, i) => {
       rows.push([
         r.date || "",
         r.merchant || "",
@@ -33,6 +35,7 @@ function toRows(receipts) {
         r.receiptNumber || "",
         i === 0 ? (r.loyaltyPoints != null ? r.loyaltyPoints : "") : "",
         i === 0 ? (r.notes || "") : "",
+        i === 0 ? (r.total != null ? round2(r.total) : "") : "",
       ]);
     });
   }
@@ -103,16 +106,19 @@ export function receiptsFromCsv(text) {
       receiptNo: (c[7] || "").trim(),
       loyalty: c[8] === "" ? null : Number(c[8]),
       notes: (c[9] || "").trim(),
+      // Absent in CSVs from older versions of the app.
+      total: c[10] == null || String(c[10]).trim() === "" ? null : Number(c[10]),
     };
     const key = `${rec.date}|${rec.merchant}|${rec.receiptNo}`;
     if (!groups.has(key)) {
       groups.set(key, {
         date: rec.date, merchant: rec.merchant, receiptNumber: rec.receiptNo,
         paymentMethod: rec.payment, vatAmount: null, loyaltyPoints: null,
-        notes: rec.notes, items: [], subtotal: null, total: 0,
+        notes: rec.notes, items: [], subtotal: null, total: 0, fileTotal: null,
       });
     }
     const g = groups.get(key);
+    if (rec.total != null && !isNaN(rec.total)) g.fileTotal = rec.total;
     if (rec.vat != null && !isNaN(rec.vat)) g.vatAmount = rec.vat;
     if (rec.loyalty != null && !isNaN(rec.loyalty)) g.loyaltyPoints = rec.loyalty;
     if (rec.payment) g.paymentMethod = g.paymentMethod || rec.payment;
@@ -122,7 +128,10 @@ export function receiptsFromCsv(text) {
   }
   const out = [];
   for (const g of groups.values()) {
-    g.total = round2(g.items.reduce((s, it) => s + (it.amount || 0), 0) + (g.vatAmount || 0));
+    const itemsTotal = g.items.reduce((s, it) => s + (it.amount || 0), 0);
+    // Older CSVs have no total column; fall back to items + VAT.
+    g.total = round2(g.fileTotal != null ? g.fileTotal : itemsTotal + (g.vatAmount || 0));
+    delete g.fileTotal;
     out.push(g);
   }
   return out;
@@ -138,8 +147,8 @@ export function exportXlsx(receipts, { budgets = {}, income = 0, month = current
   const rows = toRows(receipts);
   const logAoa = [HEADERS, ...rows];
   const logWs = XLSX.utils.aoa_to_sheet(logAoa);
-  logWs["!cols"] = [12, 20, 14, 30, 12, 10, 18, 14, 12, 20].map((w) => ({ wch: w }));
-  logWs["!autofilter"] = { ref: `A1:J${logAoa.length}` };
+  logWs["!cols"] = [12, 20, 14, 30, 12, 10, 18, 14, 12, 20, 14].map((w) => ({ wch: w }));
+  logWs["!autofilter"] = { ref: `A1:K${logAoa.length}` };
   XLSX.utils.book_append_sheet(wb, logWs, "Expense Log");
 
   // ---- Sheet 2: Dashboard (live formulas over Expense Log) ----
@@ -194,7 +203,9 @@ export function exportXlsx(receipts, { budgets = {}, income = 0, month = current
     [],
     ["1. The 'Expense Log' sheet has one row per receipt line item."],
     ["   Columns: " + HEADERS.join(", ")],
-    ["   VAT, Payment, Receipt #, Loyalty & Notes are filled on the FIRST row of each receipt only."],
+    ["   VAT, Loyalty, Notes & Receipt Total are filled on the FIRST row of each receipt only."],
+    ["   VAT or charges not listed as items appear as a 'VAT & other charges' row under Fees,"],
+    ["   so the Amount column adds up to what you actually paid."],
     [],
     ["2. The 'Dashboard' sheet is LIVE — its totals use formulas (SUMIF/SUM),"],
     ["   so if you edit amounts in the Expense Log, the Dashboard updates automatically."],

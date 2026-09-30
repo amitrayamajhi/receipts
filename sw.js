@@ -1,12 +1,14 @@
 /* Service worker: cache the app shell + vendored libs so it works offline
    after the first load. Data lives in IndexedDB, not here. */
-const CACHE = "receipt-tracker-v3";
+const CACHE = "receipt-tracker-v4";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./css/styles.css",
   "./js/app.js",
+  "./js/store.js",
+  "./js/spending.js",
   "./js/db.js",
   "./js/format.js",
   "./js/ocr.js",
@@ -29,6 +31,7 @@ const ASSETS = [
   "./vendor/tesseract-core-simd-lstm.wasm.js",
   "./vendor/tesseract-core-lstm.wasm.js",
   "./vendor/tessdata/eng.traineddata.gz",
+  "./icons/favicon.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];

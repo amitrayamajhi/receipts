@@ -6,6 +6,7 @@ import { CATEGORIES } from "../rules.js";
 import { getMonth, getCurrency, toast, navigate } from "../store.js";
 import { fmtNum, monthLabel, round2 } from "../format.js";
 import { startEdit } from "./review.js";
+import { itemsSum, totalAfterItemEdit } from "../spending.js";
 
 let sortKey = "date";
 let sortDir = "desc";
@@ -114,8 +115,9 @@ async function patchItem(rid, idx, patch, view, reRender) {
   const receipts = await allReceipts();
   const r = receipts.find((x) => x.id === rid);
   if (!r || !r.items || !r.items[idx]) return;
+  const before = itemsSum(r.items);
   Object.assign(r.items[idx], patch);
-  r.total = round2(r.items.reduce((s, it) => s + (Number(it.amount) || 0), 0) + (r.vatAmount || 0));
+  r.total = totalAfterItemEdit(r, before);
   await updateReceipt(r);
   if (reRender) renderLog(view);
 }
@@ -126,8 +128,9 @@ async function onDelete(rid, idx, view) {
   if (!r) return;
   if (r.items && r.items.length > 1) {
     if (!confirm("Delete this item from the receipt?")) return;
+    const before = itemsSum(r.items);
     r.items.splice(idx, 1);
-    r.total = round2(r.items.reduce((s, it) => s + (Number(it.amount) || 0), 0) + (r.vatAmount || 0));
+    r.total = totalAfterItemEdit(r, before);
     await updateReceipt(r);
   } else {
     if (!confirm("Delete this whole receipt?")) return;

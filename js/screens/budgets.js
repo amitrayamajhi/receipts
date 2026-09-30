@@ -5,6 +5,7 @@ import { CATEGORIES } from "../rules.js";
 import { categoryColor } from "../charts.js";
 import { getMonth, getCurrency, toast } from "../store.js";
 import { fmtMoney, fmtPct, monthLabel, round2 } from "../format.js";
+import { spendingItems } from "../spending.js";
 
 export async function renderBudgets(view) {
   const ym = getMonth();
@@ -13,8 +14,7 @@ export async function renderBudgets(view) {
 
   const spent = {};
   for (const r of receipts) {
-    const items = (r.items && r.items.length) ? r.items : [{ amount: r.total || 0, category: "Other" }];
-    for (const it of items) spent[it.category || "Other"] = (spent[it.category || "Other"] || 0) + (Number(it.amount) || 0);
+    for (const it of spendingItems(r)) spent[it.category || "Other"] = (spent[it.category || "Other"] || 0) + (Number(it.amount) || 0);
   }
 
   const totalBudget = round2(CATEGORIES.reduce((s, c) => s + (Number(budgets[c]) || 0), 0));
