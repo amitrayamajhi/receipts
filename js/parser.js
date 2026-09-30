@@ -7,7 +7,15 @@ import { categorize } from "./categorize.js";
 const MONEY = /\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})\b|\d+[.,]\d{2}\b/g;
 
 // Lines we never treat as purchasable line items.
-const NON_ITEM = /\b(sub\s*-?\s*total|total|vat|tax|change|balance|cash|card|visa|master|amex|credit|debit|tender|amount\s*due|paid|round|points?|happiness|thank|welcome|invoice|receipt|bill\s*no|tel|phone|fax|trn|trn\s*no|date|time|cashier|counter|qty|description|item)\b/i;
+const NON_ITEM = /\b(sub\s*-?\s*total|total|vat|tax|change|balance|cash|card|visa|master\s*card|master|maestro|amex|credit|debit|tender|amount\s*due|paid|round|points?|happiness|thank|welcome|invoice|receipt|bill\s*no|tel|phone|fax|trn|trn\s*no|date|time|cashier|counter|qty|description|item)\b/i;
+
+// A masked card number ("****3366", "XXXX 3366", "•••• 3366") marks a
+// payment line, whatever the card brand is called on it.
+const MASKED_CARD = /[*x•·]{3,}\s*\d{4}\b/i;
+
+// Money on these lines is what the customer handed over or got back, not
+// what the receipt cost, so it must not win the "largest value" cross-check.
+const TENDER_LINE = /\b(cash|change|tender(?:ed)?|paid|received|balance\s*due|card|visa|master\s*card|mastercard|amex)\b/i;
 
 // Extract all monetary values from a line, in order.
 function moneyTokens(line) {
@@ -78,14 +86,25 @@ function findLabeled(lines, keywordRe, { avoid } = {}) {
   return null;
 }
 
+// "Total" lines that are NOT the amount paid: subtotals, the VAT total,
+// item counts, savings.
+const NOT_GRAND_TOTAL = /\b(sub\s*-?\s*total|vat|tax|items?|qty|quantity|sav(?:ed|ings?)|discount|points?)\b/i;
+
 function extractTotal(lines) {
-  // Prefer explicit grand/net total or amount due, but NOT subtotal.
-  const strong = findLabeled(lines, /\b(grand\s*total|amount\s*due|net\s*total|total\s*payable|total)\b/i,
-    { avoid: /\bsub\s*-?\s*total\b/i });
-  // Cross-check: the largest money value in the bottom 60% of the receipt.
+  // Try the most explicit labels first, so "GRAND TOTAL" beats an earlier
+  // "TOTAL VAT" line; a bare "total" is the last resort.
+  const strong =
+    findLabeled(lines, /\b(grand\s*total|amount\s*due|net\s*total|total\s*payable|total\s*amount|net\s*amount)\b/i,
+      { avoid: /\bsub\s*-?\s*total\b/i }) ||
+    findLabeled(lines, /\btotal\b/i, { avoid: NOT_GRAND_TOTAL });
+  // Cross-check: the largest money value in the bottom 60% of the receipt,
+  // ignoring cash handed over / change given.
   const bottom = lines.slice(Math.floor(lines.length * 0.4));
   let maxVal = 0;
-  for (const l of bottom) for (const v of moneyTokens(l)) if (v > maxVal) maxVal = v;
+  for (const l of bottom) {
+    if (TENDER_LINE.test(l)) continue;
+    for (const v of moneyTokens(l)) if (v > maxVal) maxVal = v;
+  }
 
   if (strong) {
     const mismatch = maxVal > 0 && Math.abs(maxVal - strong.value) > Math.max(0.5, strong.value * 0.02) && maxVal > strong.value;
@@ -171,7 +190,7 @@ function extractMerchant(lines) {
 function extractItems(lines, merchant, overrides) {
   const items = [];
   for (const raw of lines) {
-    if (NON_ITEM.test(raw)) continue;
+    if (NON_ITEM.test(raw) || MASKED_CARD.test(raw)) continue;
 
     const tokens = moneyTokens(raw);
     let amount = tokens.length ? tokens[tokens.length - 1] : null;
@@ -210,6 +229,7 @@ function extractItems(lines, merchant, overrides) {
     // strip qty markers, barcodes (>=6 digit runs), stray codes, leftover money
     desc = desc
       .replace(/\b\d{6,}\b/g, " ")               // barcodes / product codes
+      .replace(/^\s*\d{1,3}\s+(?=[A-Za-z])/, " ")  // leading qty: "1 Cappuccino"
       .replace(/\b\d{1,3}\s*[x×@]\s*[\d.,]*/gi, " ") // "2 x 3.50"
       .replace(/[x×]\s*\d{1,3}\b/gi, " ")
       .replace(MONEY, " ")

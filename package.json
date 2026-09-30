@@ -1,0 +1,12 @@
+{
+  "name": "receipt-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scan receipts and track expenses, fully offline in the browser.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8770 --bind 127.0.0.1",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
